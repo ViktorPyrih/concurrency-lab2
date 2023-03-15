@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 public class Application {
 
     private static final Random RANDOM = new Random();
+    private static final Scanner SCANNER = new Scanner(System.in);
 
     public static void main(String[] args) {
         int arrayLength = readInt();
@@ -19,8 +20,7 @@ public class Application {
     }
 
     private static int readInt() {
-        Scanner scanner = new Scanner(System.in);
-        return scanner.nextInt();
+        return SCANNER.nextInt();
     }
 
     private static Array<Integer> generateArray(int length, ExecutorService executorService) {
