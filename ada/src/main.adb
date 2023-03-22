@@ -4,7 +4,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 procedure Main is
 
    Length : constant Integer := 100000;
-   ThreadsCount : constant Integer := 2;
+   ThreadsCount : constant Integer := 4;
    Arr : array(1..Length) of Integer;
 
    function generate_random_number (from: in Integer; to: in Integer) return Integer is
