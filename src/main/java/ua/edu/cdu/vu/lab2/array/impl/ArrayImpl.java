@@ -1,14 +1,17 @@
-package ua.edu.cdu.vu.lab2;
+package ua.edu.cdu.vu.lab2.array.impl;
+
+import ua.edu.cdu.vu.lab2.array.Array;
+import ua.edu.cdu.vu.lab2.array.ArrayElement;
 
 import java.util.Comparator;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
-public record Array<E extends Comparable<E>>(E[] array, ExecutorService executorService) {
+public record ArrayImpl<E extends Comparable<E>>(E[] array, ExecutorService executorService) implements Array<E> {
 
     private static final int THREAD_THRESHOLD = 50000;
 
-    private class ArrayMinTask implements Callable<ArrayElement> {
+    private class ArrayMinTask implements Callable<ArrayElement<E>> {
 
         private final int start;
         private final int end;
@@ -19,41 +22,20 @@ public record Array<E extends Comparable<E>>(E[] array, ExecutorService executor
         }
 
         @Override
-        public ArrayElement call() {
+        public ArrayElement<E> call() {
             return min(start, end);
         }
 
-        private ArrayElement min(int start, int end) {
+        private ArrayElement<E> min(int start, int end) {
             return IntStream.range(0, array.length)
-                    .mapToObj(i -> new ArrayElement(array[i], i))
+                    .mapToObj(i -> new ArrayElement<>(array[i], i))
                     .skip(start)
                     .limit(end - start)
                     .min(Comparator.naturalOrder()).orElseThrow();
         }
     }
 
-    private class ArrayElement implements Comparable<ArrayElement> {
-
-        private final E value;
-        private final int index;
-
-        private ArrayElement(E value, int index) {
-            this.value = value;
-            this.index = index;
-        }
-
-        @Override
-        public int compareTo(ArrayElement o) {
-            return value.compareTo(o.value);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("A[%d] = %s", index, value);
-        }
-    }
-
-    public ArrayElement min(boolean parallel) {
+    public ArrayElement<E> min(boolean parallel) {
         if (parallel) {
             int nThreads = array.length / THREAD_THRESHOLD;
             IntStream.range(0, nThreads)
@@ -67,11 +49,11 @@ public record Array<E extends Comparable<E>>(E[] array, ExecutorService executor
         return min();
     }
 
-    public ArrayElement min() {
+    public ArrayElement<E> min() {
         return new ArrayMinTask(0, array.length).call();
     }
 
-    private ArrayElement getUnchecked(Future<ArrayElement> future) {
+    private ArrayElement<E> getUnchecked(Future<ArrayElement<E>> future) {
         try {
             return future.get();
         } catch (Exception e) {
