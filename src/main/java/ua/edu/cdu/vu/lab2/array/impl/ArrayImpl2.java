@@ -14,16 +14,17 @@ public record ArrayImpl2<E extends Comparable<E>>(E[] array) implements Array<E>
         private final int start;
         private final int end;
 
-        private ArrayElement<E> min;
+        private final MinValueCollector minValueCollector;
 
-        private ArrayMinTask(int start, int end) {
+        private ArrayMinTask(int start, int end, MinValueCollector minValueCollector) {
             this.start = start;
             this.end = end;
+            this.minValueCollector = minValueCollector;
         }
 
         @Override
         public void run() {
-            this.min = min(start, end);
+            minValueCollector.collect(min(start, end));
         }
 
         private ArrayElement<E> min(int start, int end) {
@@ -36,27 +37,38 @@ public record ArrayImpl2<E extends Comparable<E>>(E[] array) implements Array<E>
 
             return min;
         }
+    }
 
-        public ArrayElement<E> result() {
+    private class MinValueCollector {
+
+        private volatile ArrayElement<E> min;
+
+        public synchronized void collect(ArrayElement<E> value) {
+            if (Objects.isNull(min) || value.compareTo(min) < 0) {
+                min = value;
+            }
+        }
+
+        public ArrayElement<E> min() {
             return min;
         }
     }
 
     public ArrayElement<E> min(boolean parallel) {
         if (parallel) {
+            MinValueCollector minValueCollector = new MinValueCollector();
+
             int nThreads = array.length / THREAD_THRESHOLD;
-            List<ArrayMinTask> tasks = new ArrayList<>(nThreads);
             Thread[] threads = new Thread[nThreads];
             for (int i = 0; i < threads.length; i++) {
-                ArrayMinTask minTask = new ArrayMinTask(i * THREAD_THRESHOLD, (i + 1) * THREAD_THRESHOLD);
-                tasks.add(minTask);
+                ArrayMinTask minTask = new ArrayMinTask(i * THREAD_THRESHOLD, (i + 1) * THREAD_THRESHOLD, minValueCollector);
                 threads[i] = new Thread(minTask);
                 threads[i].start();
             }
 
             join(threads);
 
-            return minResult(tasks);
+            return minValueCollector.min();
         }
 
         return min();
@@ -72,16 +84,11 @@ public record ArrayImpl2<E extends Comparable<E>>(E[] array) implements Array<E>
         }
     }
 
-    private ArrayElement<E> minResult(List<ArrayMinTask> tasks) {
-        return tasks.stream()
-                .map(ArrayMinTask::result)
-                .min(Comparator.naturalOrder())
-                .orElseThrow();
-    }
-
     public ArrayElement<E> min() {
-        ArrayMinTask minTask = new ArrayMinTask(0, array.length);
+        MinValueCollector minValueCollector = new MinValueCollector();
+        ArrayMinTask minTask = new ArrayMinTask(0, array.length, minValueCollector);
         minTask.run();
-        return minTask.result();
+
+        return minValueCollector.min();
     }
 }
